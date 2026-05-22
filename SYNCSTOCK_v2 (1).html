@@ -1,0 +1,1024 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#0d0f12;--surface:#161a1f;--surface2:#1e2329;--border:#2a3040;
+  --accent:#00e5a0;--warn:#f5a623;--danger:#ff4757;--blue:#0066ff;
+  --text:#e8edf5;--muted:#5a6478;
+  --mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',sans-serif;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;font-size:14px;overflow-x:hidden;}
+
+/* LAYOUT */
+.shell{display:flex;flex-direction:column;min-height:100vh;}
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:.75rem 1.25rem;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;position:sticky;top:0;z-index:100;}
+.logo{font-family:var(--mono);font-size:13px;font-weight:500;color:var(--accent);letter-spacing:1px;}
+.topbar-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.session-badge{font-family:var(--mono);font-size:12px;padding:4px 10px;border-radius:4px;background:rgba(0,229,160,.1);border:1px solid rgba(0,229,160,.2);color:var(--accent);cursor:pointer;}
+.sync-dot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex-shrink:0;transition:background .3s;}
+.sync-dot.live{background:var(--accent);animation:pulse 1.5s infinite;}
+.sync-dot.syncing{background:var(--warn);}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.user-count{font-family:var(--mono);font-size:11px;color:var(--muted);}
+
+/* TABS */
+.tabs{display:flex;background:var(--surface);border-bottom:1px solid var(--border);overflow-x:auto;}
+.tab{padding:10px 18px;font-size:12px;font-family:var(--mono);color:var(--muted);border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:all .15s;}
+.tab:hover{color:var(--text);}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+.panel{display:none;padding:1.25rem;max-width:100%;}.panel.active{display:block;}
+
+/* CARDS */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:1.25rem;margin-bottom:1rem;}
+.card-title{font-size:10px;font-family:var(--mono);color:var(--accent);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:.875rem;}
+
+/* SESSION SETUP */
+.big-input{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:10px 14px;border-radius:6px;font-family:var(--sans);font-size:14px;margin-bottom:8px;}
+.big-input:focus{outline:none;border-color:var(--accent);}
+.big-input::placeholder{color:var(--muted);}
+.code-input{font-family:var(--mono);font-size:20px;letter-spacing:6px;text-transform:uppercase;text-align:center;}
+.session-code-display{font-family:var(--mono);font-size:32px;font-weight:500;color:var(--accent);letter-spacing:8px;text-align:center;padding:1rem;background:var(--surface2);border:1px solid rgba(0,229,160,.2);border-radius:8px;margin-bottom:.75rem;}
+.divider{display:flex;align-items:center;gap:12px;margin:1rem 0;color:var(--muted);font-size:12px;}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border);}
+
+/* BUTTONS */
+.btn{padding:9px 18px;border-radius:6px;font-size:12px;font-family:var(--mono);cursor:pointer;border:1px solid;transition:all .15s;letter-spacing:.5px;display:inline-flex;align-items:center;gap:6px;}
+.btn-p{background:var(--accent);color:#000;border-color:var(--accent);font-weight:600;}
+.btn-p:hover{background:#00c98a;}
+.btn-g{background:transparent;color:var(--text);border-color:var(--border);}
+.btn-g:hover{background:var(--surface2);border-color:var(--text);}
+.btn-full{width:100%;justify-content:center;}
+.btn-sm{padding:5px 12px;font-size:11px;}
+
+/* UPLOAD */
+.upload-zone{border:2px dashed var(--border);border-radius:8px;padding:2rem;text-align:center;cursor:pointer;transition:all .2s;background:var(--surface2);}
+.upload-zone:hover,.upload-zone.drag{border-color:var(--accent);background:rgba(0,229,160,.04);}
+input[type=file]{display:none;}
+
+/* SCANNER */
+.scanner-wrap{background:var(--surface2);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:1rem;}
+.scanner-header{padding:.75rem 1rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);}
+.scanner-title{font-family:var(--mono);font-size:11px;color:var(--accent);letter-spacing:1px;text-transform:uppercase;}
+#scanner-video{width:100%;max-height:220px;object-fit:cover;display:block;background:#000;}
+.scanner-input-row{display:flex;gap:8px;padding:.75rem;}
+.scanner-input-row input{flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:10px 14px;border-radius:6px;font-family:var(--mono);font-size:16px;letter-spacing:1px;}
+.scanner-input-row input:focus{outline:none;border-color:var(--accent);}
+.scanned-result{padding:.5rem 1rem .75rem;font-family:var(--mono);font-size:12px;min-height:32px;}
+
+/* CONTEO RÁPIDO */
+.quick-count-card{background:linear-gradient(135deg,rgba(0,229,160,.06),rgba(0,102,255,.06));border:1px solid rgba(0,229,160,.2);border-radius:8px;padding:1.25rem;margin-bottom:1rem;}
+.product-found{padding:1rem;background:var(--surface);border:1px solid var(--border);border-radius:6px;margin-bottom:.75rem;}
+.product-found-name{font-size:14px;font-weight:500;margin-bottom:4px;}
+.product-found-sku{font-family:var(--mono);font-size:11px;color:var(--accent);}
+.location-qty-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:.75rem;}
+.loc-input{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:6px;font-family:var(--mono);font-size:13px;width:130px;}
+.loc-input:focus{outline:none;border-color:var(--warn);}
+.qty-big{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:6px;font-family:var(--mono);font-size:20px;width:90px;text-align:center;}
+.qty-big:focus{outline:none;border-color:var(--accent);}
+
+/* TABLE */
+.tbl-wrap{overflow-x:auto;}
+.data-table{width:100%;border-collapse:collapse;font-size:12px;}
+.data-table th{padding:8px 10px;text-align:left;color:var(--muted);border-bottom:1px solid var(--border);font-size:10px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;background:var(--surface);}
+.data-table td{padding:8px 10px;border-bottom:1px solid rgba(42,48,64,.35);vertical-align:top;}
+.data-table tr:hover td{background:rgba(30,35,41,.6);}
+.sku-cell{font-family:var(--mono);color:var(--accent);white-space:nowrap;font-size:11px;}
+.name-cell{max-width:200px;font-size:12px;line-height:1.4;}
+.oracle-cell{font-family:var(--mono);text-align:center;}
+.total-cell{font-family:var(--mono);text-align:center;font-weight:500;}
+.diff-cell{font-family:var(--mono);text-align:center;}
+.dp{color:var(--accent);}.dm{color:var(--danger);}
+.loc-entries{display:flex;flex-direction:column;gap:3px;}
+.loc-entry{font-size:11px;font-family:var(--mono);padding:2px 6px;border-radius:3px;background:var(--surface2);border:1px solid var(--border);display:flex;align-items:center;gap:6px;white-space:nowrap;}
+.loc-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;}
+.badge{font-size:10px;font-family:var(--mono);padding:2px 7px;border-radius:3px;white-space:nowrap;}
+.b-ok{background:rgba(0,229,160,.12);color:var(--accent);}
+.b-warn{background:rgba(245,166,35,.12);color:var(--warn);}
+.b-err{background:rgba(255,71,87,.12);color:var(--danger);}
+.b-pend{background:rgba(90,100,120,.15);color:var(--muted);}
+
+/* METRICS */
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1.25rem;}
+@media(max-width:480px){.metrics{grid-template-columns:repeat(2,1fr);}}
+.metric{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:.875rem 1rem;}
+.mlabel{font-size:10px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;}
+.mval{font-size:24px;font-weight:300;font-family:var(--mono);}
+.mval.g{color:var(--accent);}.mval.a{color:var(--warn);}.mval.r{color:var(--danger);}
+
+/* PROGRESS */
+.prog-wrap{background:var(--surface2);border-radius:4px;height:6px;overflow:hidden;margin:.5rem 0;}
+.prog-bar{height:6px;background:var(--accent);border-radius:4px;transition:width .5s;}
+
+/* USERS LIVE */
+.users-live{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
+.uchip{display:flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11px;font-family:var(--mono);border:1px solid var(--border);background:var(--surface2);}
+.udot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+
+/* EXPORT */
+.export-row{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;background:var(--surface2);border:1px solid var(--border);border-radius:8px;margin-bottom:8px;gap:12px;flex-wrap:wrap;}
+.en{font-size:13px;font-weight:500;margin-bottom:2px;}
+.ed{font-size:11px;font-family:var(--mono);color:var(--muted);}
+
+/* ALERT */
+.alert{padding:.75rem 1rem;border-radius:6px;font-size:12px;font-family:var(--mono);margin-bottom:1rem;line-height:1.6;}
+.alert-ok{background:rgba(0,229,160,.07);border:1px solid rgba(0,229,160,.2);color:var(--accent);}
+.alert-warn{background:rgba(245,166,35,.07);border:1px solid rgba(245,166,35,.2);color:var(--warn);}
+.alert-info{background:rgba(0,102,255,.07);border:1px solid rgba(0,102,255,.2);color:#7ab3ff;}
+
+/* TOAST */
+.toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--accent);color:var(--accent);padding:9px 18px;border-radius:6px;font-family:var(--mono);font-size:12px;display:none;z-index:9999;white-space:nowrap;}
+
+/* FILTER BAR */
+.filter-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:1rem;}
+.filter-bar input,.filter-bar select{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:7px 12px;border-radius:5px;font-family:var(--mono);font-size:12px;}
+.filter-bar input:focus,.filter-bar select:focus{outline:none;border-color:var(--accent);}
+.filter-bar input{width:200px;}
+
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+</style>
+
+<!-- FIREBASE REALTIME -->
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import {
+  getDatabase,
+  ref,
+  set,
+  get,
+  onValue
+} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAVEJSl6oVJyoh6FgjEsKJ4gJCQ88SGxkw",
+  authDomain: "syncstock-inventario.firebaseapp.com",
+  databaseURL: "https://syncstock-inventario-default-rtdb.firebaseio.com",
+  projectId: "syncstock-inventario",
+  storageBucket: "syncstock-inventario.firebasestorage.app",
+  messagingSenderId: "68379145757",
+  appId: "1:68379145757:web:6ea7e600ede44eaa6838f4"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+window.firebaseDB = db;
+window.firebaseRef = ref;
+window.firebaseSet = set;
+window.firebaseGet = get;
+window.firebaseOnValue = onValue;
+
+console.log("Firebase conectado correctamente"); window.firebaseReady = true;
+</script>
+
+</head>
+<body>
+<div class="shell">
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="logo">⬡ SYNCSTOCK</div>
+  <div class="topbar-right">
+    <span class="sync-dot" id="sync-dot" title="Estado de sincronización"></span>
+    <span class="user-count" id="user-count">Sin sesión</span>
+    <span class="session-badge" id="session-badge" onclick="copyCode()" style="display:none">------</span>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <button class="tab active" onclick="goTab(0)">① Sesión</button>
+  <button class="tab" onclick="goTab(1)">② Datos</button>
+  <button class="tab" onclick="goTab(2)">③ Escanear &amp; Contar</button>
+  <button class="tab" onclick="goTab(3)">④ Lista completa</button>
+  <button class="tab" onclick="goTab(4)">⑤ Exportar</button>
+</div>
+
+<!-- ══════════════════════════════════ -->
+<!-- TAB 0: SESIÓN                      -->
+<!-- ══════════════════════════════════ -->
+<div class="panel active" id="tab-0">
+
+  <div class="card">
+    <div class="card-title">Tu nombre</div>
+    <input class="big-input" type="text" id="inp-name" placeholder="Ej: Carlos – Bodega A" maxlength="30"/>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Crear sesión nueva (líder)</div>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:1rem;line-height:1.6;">Crea la sesión, sube el archivo de Oracle, y comparte el código de 6 letras con tu equipo.</p>
+    <button class="btn btn-p btn-full" onclick="createSession()">+ Crear nueva sesión</button>
+  </div>
+
+  <div class="divider">o únete a una sesión existente</div>
+
+  <div class="card">
+    <div class="card-title">Unirse a sesión</div>
+    <input class="big-input code-input" type="text" id="inp-join" placeholder="ABC123" maxlength="6" oninput="this.value=this.value.toUpperCase()"/>
+    <button class="btn btn-g btn-full" onclick="joinSession()">Unirse →</button>
+  </div>
+
+  <div id="session-active-card" style="display:none;">
+    <div class="card">
+      <div class="card-title">Sesión activa — comparte este código</div>
+      <div class="session-code-display" id="session-code-display">------</div>
+      <button class="btn btn-g btn-full" onclick="copyCode()">📋 Copiar código</button>
+      <div style="margin-top:1rem;">
+        <div style="font-size:11px;font-family:var(--mono);color:var(--muted);margin-bottom:8px;">CONECTADOS AHORA</div>
+        <div class="users-live" id="users-live-0"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════ -->
+<!-- TAB 1: DATOS                       -->
+<!-- ══════════════════════════════════ -->
+<div class="panel" id="tab-1">
+  <div id="remote-data-banner" style="display:none;" class="alert alert-info"></div>
+
+  <div class="card" id="upload-card">
+    <div class="card-title">Cargar archivo de Oracle Fusion</div>
+    <div class="upload-zone" id="drop-zone"
+         onclick="document.getElementById('file-in').click()"
+         ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
+      <div style="font-size:28px;margin-bottom:.5rem;">📂</div>
+      <div style="font-size:13px;font-weight:500;margin-bottom:4px;">Arrastra o haz clic — .xlsx, .xls, .csv</div>
+      <div style="font-size:11px;font-family:var(--mono);color:var(--muted);">Lee Excel directamente — sin problemas con comas en nombres de productos</div>
+    </div>
+    <input type="file" id="file-in" accept=".xlsx,.xls,.csv,.txt" onchange="loadFile(this)"/>
+    <div id="load-status" style="margin-top:10px;"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Datos de ejemplo</div>
+    <button class="btn btn-g" onclick="loadDemo()">Cargar datos demo (estructura Oracle real)</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════ -->
+<!-- TAB 2: ESCANEAR & CONTAR           -->
+<!-- ══════════════════════════════════ -->
+<div class="panel" id="tab-2">
+
+  <!-- ESCÁNER -->
+  <div class="scanner-wrap">
+    <div class="scanner-header">
+      <span class="scanner-title">📷 Escáner de código de barras</span>
+      <div style="display:flex;gap:6px;">
+        <button class="btn btn-sm btn-g" onclick="toggleCamera()">Cámara</button>
+        <button class="btn btn-sm btn-g" onclick="document.getElementById('sku-scan-input').focus()">Manual / USB</button>
+      </div>
+    </div>
+    <video id="scanner-video" autoplay playsinline style="display:none;"></video>
+    <div class="scanner-input-row">
+      <input type="text" id="sku-scan-input"
+        placeholder="Escanea código o escribe SKU + Enter"
+        onkeydown="if(event.key==='Enter'){scanSKU(this.value);this.value='';}"
+        autocomplete="off" autocorrect="off" spellcheck="false"/>
+      <button class="btn btn-p"
+onclick="scanSKU(document.getElementById('sku-scan-input').value);
+document.getElementById('sku-scan-input').value='';">
+→
+</button>
+    </div>
+    <div class="scanned-result" id="scan-result" style="color:var(--muted);">Esperando escaneo...</div>
+  </div>
+
+  <!-- RESULTADO DEL ESCANEO -->
+  <div id="quick-count-wrap" style="display:none;">
+    <div class="quick-count-card">
+      <div class="card-title">Producto encontrado</div>
+      <div class="product-found">
+        <div class="product-found-name" id="qc-name">—</div>
+        <div class="product-found-sku" id="qc-sku">—</div>
+        <div style="display:flex;gap:16px;margin-top:6px;flex-wrap:wrap;">
+          <div style="font-size:11px;color:var(--muted);">Stock Oracle: <span id="qc-oracle" style="color:var(--text);font-family:var(--mono);font-weight:500;">—</span></div>
+          <div style="font-size:11px;color:var(--muted);">Ya contado: <span id="qc-counted" style="color:var(--accent);font-family:var(--mono);font-weight:500;">0</span></div>
+          <div style="font-size:11px;color:var(--muted);">Falta: <span id="qc-remaining" style="font-family:var(--mono);font-weight:500;">—</span></div>
+        </div>
+      </div>
+
+      <div style="font-size:11px;font-family:var(--mono);color:var(--muted);margin-bottom:6px;">CONTEOS YA REGISTRADOS PARA ESTE SKU</div>
+      <div id="qc-existing" style="margin-bottom:.875rem;font-family:var(--mono);font-size:12px;color:var(--muted);">Ninguno aún.</div>
+      <div style="font-size:11px;font-family:var(--mono);color:var(--muted);margin-bottom:6px;font-weight:500;">AGREGAR NUEVO CONTEO</div>
+      <div class="location-qty-row">
+        <select class="loc-input" id="qc-location">
+          <option value="Sala de ventas">Sala de ventas</option>
+          <option value="Sótano 1">Sótano 1</option>
+          <option value="Sótano 2">Sótano 2</option>
+          <option value="Capacitación">Capacitación</option>
+        </select>
+        <input class="qty-big" type="number" id="qc-qty" min="0" placeholder="0" onkeydown="if(event.key==='Enter')addLocationCount()"/>
+        <button class="btn btn-p" onclick="addLocationCount()">✓ Agregar</button>
+      </div>
+      <div style="margin-top:.75rem;display:flex;gap:8px;">
+        <button class="btn btn-g btn-sm" onclick="clearQuick()">✕ Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RECIENTES -->
+  <div class="card">
+    <div class="card-title">Últimos escaneados</div>
+    <div id="recent-scans" style="font-size:12px;color:var(--muted);font-family:var(--mono);">Aún no hay escaneos.</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════ -->
+<!-- TAB 3: LISTA COMPLETA              -->
+<!-- ══════════════════════════════════ -->
+<div class="panel" id="tab-3">
+  <div class="metrics" id="metrics-box"></div>
+  <div class="prog-wrap"><div class="prog-bar" id="prog-bar" style="width:0%"></div></div>
+  <div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:1rem;" id="prog-label">0 / 0</div>
+
+  <div style="font-size:11px;font-family:var(--mono);color:var(--muted);margin-bottom:6px;">EQUIPO ACTIVO</div>
+  <div class="users-live" id="users-live-3" style="margin-bottom:1rem;"></div>
+
+  <div class="filter-bar">
+    <input type="text" id="search-input" placeholder="Buscar SKU o nombre..." oninput="renderTable()"/>
+    <select id="filter-sel" onchange="renderTable()">
+      <option value="all">Todos</option>
+      <option value="pending">Sin contar</option>
+      <option value="counted">Contados</option>
+      <option value="diff">Con diferencia</option>
+    </select>
+    <span style="font-family:var(--mono);font-size:11px;color:var(--muted);" id="table-count"></span>
+  </div>
+
+  <div class="card" style="padding:0;overflow:hidden;">
+    <div class="tbl-wrap">
+      <table class="data-table">
+        <thead><tr>
+          <th>SKU</th><th>Nombre</th><th>Org</th><th>Subinv.</th>
+          <th>Stock Oracle</th><th>Total contado</th><th>Diferencia</th>
+          <th>Conteos por ubicación</th><th>Estado</th>
+        </tr></thead>
+        <tbody id="table-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════ -->
+<!-- TAB 4: EXPORTAR                    -->
+<!-- ══════════════════════════════════ -->
+<div class="panel" id="tab-4">
+  <div class="metrics" id="metrics-export"></div>
+  <div class="card">
+    <div class="card-title">Exportar archivos</div>
+    <div class="export-row">
+      <div><div class="en">Oracle Fusion FBDI</div><div class="ed">EGP_PHYSICAL_INVENTORY_TXN · formato oficial · org detectada</div></div>
+      <button class="btn btn-p" onclick="exportFBDI()">↓ FBDI</button>
+    </div>
+    <div class="export-row">
+      <div><div class="en">Shopify Inventory CSV</div><div class="ed">Formato Shopify Locations · listo para importar</div></div>
+      <button class="btn btn-g" onclick="exportShopify()">↓ Shopify</button>
+    </div>
+    <div class="export-row">
+      <div><div class="en">Reporte de diferencias</div><div class="ed">Ítems con ajuste · detalle por ubicación · quién contó</div></div>
+      <button class="btn btn-g" onclick="exportDiff()">↓ Reporte</button>
+    </div>
+  </div>
+  <div class="card" style="padding:0;overflow:hidden;">
+    <div style="padding:.875rem 1.25rem;border-bottom:1px solid var(--border);">
+      <div class="card-title" style="margin:0;">Vista previa FBDI</div>
+    </div>
+    <div class="tbl-wrap">
+      <table class="data-table">
+        <thead><tr><th>ITEM_NUMBER</th><th>ORG</th><th>SUBINV</th><th>TXN_TYPE</th><th>TOTAL_QTY</th><th>UOM</th><th>DATE</th></tr></thead>
+        <tbody id="preview-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+</div><!-- /shell -->
+<div class="toast" id="toast"></div>
+
+
+<script>
+// STORAGE FALLBACK PARA NETLIFY
+if(!window.storage){
+  window.storage = {
+    async set(key, value){
+      if(window.firebaseDB){
+        window.firebaseSet(window.firebaseRef(window.firebaseDB, key), value);
+      } else {
+        localStorage.setItem(key, value);
+      }
+      return true;
+    },
+    async get(key){
+      if(window.firebaseDB){
+        const snapshot = await window.firebaseGet(window.firebaseRef(window.firebaseDB, key));
+        return { value: snapshot && snapshot.exists() ? snapshot.val() : null };
+      }
+      return { value: localStorage.getItem(key) };
+    }
+  };
+}
+</script>
+
+<script>
+// ═══════════════════════════════════
+// ESTADO GLOBAL
+// ═══════════════════════════════════
+let sessionId   = null;
+let myName      = 'Usuario';
+let myColor     = '#00e5a0';
+let products    = [];       // [{sku, name, uom, sub, org, oracle, counts:[{loc,qty,who,color,ts}]}]
+let recentScans = [];
+let currentQcIdx= null;
+let cameraStream= null;
+let syncTick    = 0;
+const COLORS = ['#00e5a0','#f5a623','#ff6b81','#a29bfe','#fdcb6e','#55efc4','#74b9ff','#fd79a8'];
+
+// ── Claves de localStorage ──
+const LS_SESSION  = 'ss_sessionId';
+const LS_NAME     = 'ss_myName';
+const LS_COLOR    = 'ss_myColor';
+const LS_PRODUCTS = 'ss_products';
+
+// ── Guardar estado en localStorage en cada cambio relevante ──
+function saveLocal(){
+  try{
+    if(sessionId)  localStorage.setItem(LS_SESSION,  sessionId);
+    if(myName)     localStorage.setItem(LS_NAME,     myName);
+    if(myColor)    localStorage.setItem(LS_COLOR,    myColor);
+    if(products.length) localStorage.setItem(LS_PRODUCTS, JSON.stringify(products));
+  }catch(e){}
+}
+
+// ── Restaurar estado desde localStorage al cargar la página ──
+function restoreLocal(){
+  try{
+    const sid = localStorage.getItem(LS_SESSION);
+    const sname = localStorage.getItem(LS_NAME);
+    const scolor = localStorage.getItem(LS_COLOR);
+    const sprods = localStorage.getItem(LS_PRODUCTS);
+    if(sid && sname){
+      sessionId = sid;
+      myName    = sname;
+      myColor   = scolor || '#00e5a0';
+      if(sprods) products = JSON.parse(sprods);
+      // Restaurar UI de sesión
+      document.getElementById('inp-name').value = myName;
+      document.getElementById('session-code-display').textContent = sessionId;
+      document.getElementById('session-badge').textContent = sessionId;
+      document.getElementById('session-badge').style.display = 'inline-flex';
+      document.getElementById('session-active-card').style.display = 'block';
+      // Indicar que la sesión se restauró
+      const banner = document.getElementById('remote-data-banner');
+      banner.style.display = 'block';
+      banner.className = 'alert alert-ok';
+      banner.textContent = `✓ Sesión ${sessionId} restaurada con ${products.length} productos. Reconectando...`;
+      startSync();
+      // Sincronizar con Firebase para traer conteos más recientes
+      setTimeout(async()=>{
+        await pullProducts();
+        banner.textContent = `✓ Sesión ${sessionId} activa · ${products.length} productos · ${products.filter(p=>p.counts&&p.counts.length>0).length} contados`;
+      }, 1500);
+      toast(`Sesión ${sessionId} restaurada`);
+    }
+  }catch(e){}
+}
+
+// ═══════════════════════════════════
+// TABS
+// ═══════════════════════════════════
+function goTab(n){
+  document.querySelectorAll('.panel').forEach((p,i)=>p.classList.toggle('active',i===n));
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',i===n));
+  if(n===3){ renderTable(); renderMetrics('metrics-box'); }
+  if(n===4){ renderMetrics('metrics-export'); renderPreview(); }
+}
+
+// Restaurar sesión al cargar la página
+window.addEventListener('DOMContentLoaded', restoreLocal);
+
+// ═══════════════════════════════════
+// SESIÓN
+// ═══════════════════════════════════
+function genId(){ return Math.random().toString(36).substring(2,8).toUpperCase(); }
+
+function createSession(){
+  const name = document.getElementById('inp-name').value.trim();
+  if(!name){ toast('Escribe tu nombre'); return; }
+  myName  = name;
+  myColor = COLORS[Math.floor(Math.random()*COLORS.length)];
+  sessionId = genId();
+  activateSession(false);
+}
+
+function joinSession(){
+  const name = document.getElementById('inp-name').value.trim();
+  const code = document.getElementById('inp-join').value.trim().toUpperCase();
+  if(!name){ toast('Escribe tu nombre'); return; }
+  if(code.length < 4){ toast('Ingresa el código de sesión'); return; }
+  myName  = name;
+  myColor = COLORS[Math.floor(Math.random()*COLORS.length)];
+  sessionId = code;
+  activateSession(true);
+}
+
+async function activateSession(isJoining){
+  document.getElementById('session-code-display').textContent = sessionId;
+  document.getElementById('session-badge').textContent = sessionId;
+  document.getElementById('session-badge').style.display = 'inline-flex';
+  document.getElementById('session-active-card').style.display = 'block';
+  saveLocal();
+  await pushPresence();
+  if(isJoining){
+    // Carga inmediata de datos de la sesión
+    const loaded = await pullProducts();
+    if(loaded){
+      document.getElementById('remote-data-banner').style.display='block';
+      document.getElementById('remote-data-banner').textContent=
+        `✓ ${products.length} productos cargados desde la sesión del líder. Ve a "Escanear & Contar".`;
+      toast(`✓ ${products.length} productos sincronizados`);
+    } else {
+      document.getElementById('remote-data-banner').style.display='block';
+      document.getElementById('remote-data-banner').textContent=
+        'El líder aún no ha subido el archivo. Espera unos segundos o recarga.';
+      document.getElementById('remote-data-banner').className='alert alert-warn';
+    }
+  }
+  startSync();
+  toast(isJoining ? `Unido a sesión ${sessionId}` : `Sesión ${sessionId} creada`);
+}
+
+// ═══════════════════════════════════
+// SYNC — STORAGE COMPARTIDO
+// ═══════════════════════════════════
+const PROD_KEY = ()=>`inv-products-${sessionId}`;
+const PRES_KEY = ()=>`inv-presence-${sessionId}`;
+
+async function pushProducts(){
+  if(!sessionId) return;
+  setSyncDot('syncing');
+  saveLocal();
+  try{
+    await window.storage.set(PROD_KEY(), JSON.stringify({products, ts: Date.now(), by: myName}), true);
+  }catch(e){}
+  setSyncDot('live');
+}
+
+async function pullProducts(){
+  if(!sessionId) return false;
+  try{
+    let d; try{ d = await window.storage.get(PROD_KEY(), true); }catch(e){ return false; }
+    if(!d || !d.value) return false;
+    const remote = JSON.parse(d.value);
+    if(!remote.products || remote.products.length === 0) return false;
+    // MERGE: preservar mis conteos, absorber conteos ajenos
+    if(products.length === 0){
+      // Primera carga: tomar todo del servidor
+      products = remote.products.map(p=>({...p, counts: p.counts||[]}));
+    } else {
+      // Merge por SKU
+      remote.products.forEach(rp=>{
+        const lp = products.find(x=>x.sku===rp.sku);
+        if(!lp) return;
+        const remoteCounts = (rp.counts||[]);
+        remoteCounts.forEach(rc=>{
+          // Si este conteo (por who+loc) no existe localmente, agregarlo
+          const exists = lp.counts.find(lc=>lc.who===rc.who && lc.loc===rc.loc && lc.ts===rc.ts);
+          if(!exists) lp.counts.push(rc);
+        });
+      });
+    }
+    saveLocal();
+    return true;
+  }catch(e){ return false; }
+}
+
+async function pushPresence(){
+  if(!sessionId) return;
+  try{
+    let d; try{ d = await window.storage.get(PRES_KEY(), true); }catch(e){ d = null; }
+    const users = d && d.value ? JSON.parse(d.value) : {};
+    users[myName] = { color: myColor, ts: Date.now() };
+    await window.storage.set(PRES_KEY(), JSON.stringify(users), true);
+  }catch(e){}
+}
+
+async function pullPresence(){
+  if(!sessionId) return;
+  try{
+    let d; try{ d = await window.storage.get(PRES_KEY(), true); }catch(e){ return; }
+    if(!d || !d.value) return;
+    const users = JSON.parse(d.value);
+    const now = Date.now();
+    const active = Object.entries(users)
+      .filter(([,u])=>now-u.ts < 18000)
+      .map(([n,u])=>({name:n,color:u.color}));
+    renderUsers(active);
+    document.getElementById('user-count').textContent = `${active.length} en sesión`;
+  }catch(e){}
+}
+
+function renderUsers(active){
+  ['users-live-0','users-live-3'].forEach(id=>{
+    const el=document.getElementById(id); if(!el) return;
+    el.innerHTML = active.map(u=>
+      `<div class="uchip"><span class="udot" style="background:${u.color}"></span>${u.name}${u.name===myName?' ✓':''}</div>`
+    ).join('');
+  });
+}
+
+let syncInterval=null;
+function startSync(){
+  if(syncInterval) clearInterval(syncInterval);
+  // Sync cada 2.5 segundos
+  syncInterval = setInterval(async()=>{
+    await pushPresence();
+    const changed = await pullProducts();
+    if(changed){
+      if(document.getElementById('tab-2').classList.contains('active') && currentQcIdx!==null){
+        renderExisting(currentQcIdx);
+      }
+      if(document.getElementById('tab-3').classList.contains('active')) renderTable();
+    }
+    await pullPresence();
+    setSyncDot('live');
+  }, 2500);
+}
+
+function setSyncDot(state){
+  const d=document.getElementById('sync-dot');
+  d.className='sync-dot '+(state==='live'?'live':state==='syncing'?'syncing':'');
+}
+
+// ═══════════════════════════════════
+// ARCHIVO
+// ═══════════════════════════════════
+const COL_ALIASES={
+  sku:  ['sku','item_number','item number','item','código','codigo','part number'],
+  name: ['nombre','name','description','descripcion','item description'],
+  uom:  ['item primary un','item primary unit','uom','unit','unidad'],
+  org:  ['inventory organ','inventory organization','organization','org'],
+  qty:  ['on-hand quantity','on hand quantity','on_hand_quantity','quantity','qty','cantidad','stock'],
+  sub:  ['subinventory','subinventory code','subinv','sub_inventory','sub inventory'],
+};
+function norm(s){return String(s).trim().toLowerCase().replace(/\s+/g,' ');}
+function findCol(keys,aliases){
+  const nk=keys.map(k=>({orig:k,n:norm(k)}));
+  for(const a of aliases){const h=nk.find(k=>k.n===a);if(h)return h.orig;}
+  for(const a of aliases){const h=nk.find(k=>k.n.includes(a)||a.includes(k.n));if(h)return h.orig;}
+  return null;
+}
+function onDragOver(e){e.preventDefault();document.getElementById('drop-zone').classList.add('drag');}
+function onDragLeave(e){document.getElementById('drop-zone').classList.remove('drag');}
+function onDrop(e){e.preventDefault();onDragLeave(e);if(e.dataTransfer.files[0])readFile(e.dataTransfer.files[0]);}
+function loadFile(inp){if(inp.files[0])readFile(inp.files[0]);}
+
+function readFile(file){
+  const ext=file.name.split('.').pop().toLowerCase();
+  const reader=new FileReader();
+  if(['xlsx','xls'].includes(ext)){
+    reader.onload=e=>{
+      const wb=XLSX.read(e.target.result,{type:'array'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      processRows(XLSX.utils.sheet_to_json(ws,{defval:''}),file.name);
+    };
+    reader.readAsArrayBuffer(file);
+  }else{
+    reader.onload=e=>{
+      const text=e.target.result;
+      const sep=text.split('\n')[0].includes(';')?';':text.split('\n')[0].includes('\t')?'\t':',';
+      const wb=XLSX.read(text,{type:'string',FS:sep});
+      processRows(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''}),file.name);
+    };
+    reader.readAsText(file,'UTF-8');
+  }
+}
+
+function processRows(rows,filename){
+  if(!rows||rows.length===0){setStatus('warn','Archivo vacío.');return;}
+  const keys=Object.keys(rows[0]);
+  const cSku=findCol(keys,COL_ALIASES.sku);
+  const cName=findCol(keys,COL_ALIASES.name);
+  const cUom=findCol(keys,COL_ALIASES.uom);
+  const cOrg=findCol(keys,COL_ALIASES.org);
+  const cQty=findCol(keys,COL_ALIASES.qty);
+  const cSub=findCol(keys,COL_ALIASES.sub);
+  if(!cSku){setStatus('warn',`No encontré columna SKU. Columnas: ${keys.join(' | ')}`);return;}
+  if(!cQty){setStatus('warn',`No encontré columna cantidad. Columnas: ${keys.join(' | ')}`);return;}
+  products=rows.filter(r=>String(r[cSku]).trim()!=='').map(r=>({
+    sku: String(r[cSku]).trim(),
+    name: cName?String(r[cName]).trim():'—',
+    uom: cUom?String(r[cUom]).trim():'Ea',
+    org: cOrg?String(r[cOrg]).trim():'SPP04',
+    sub: cSub?String(r[cSub]).trim():'',
+    oracle: parseFloat(String(r[cQty]).replace(/,/g,'.'))||0,
+    counts:[], // [{loc, qty, who, color, ts}]
+  }));
+  setStatus('ok',`✓ ${products.length} productos cargados · SKU="${cSku}" · Cantidad="${cQty}"${cSub?' · Subinventario="'+cSub+'"':' · ⚠ columna SUBINVENTORY no detectada'}`);
+  pushProducts();
+  toast(`✓ ${products.length} productos sincronizados al equipo`);
+}
+
+function setStatus(type,msg){
+  document.getElementById('load-status').innerHTML=`<div class="alert alert-${type==='ok'?'ok':'warn'}">${msg}</div>`;
+}
+
+function loadDemo(){
+  products=[
+    {sku:'0114942384',name:'American Professional Classic Stratocaster, Faded Firemist Gold',uom:'Unidad',org:'SPP04',sub:'CAS',oracle:1,counts:[]},
+    {sku:'0114952322',name:'American Professional Classic Stratocaster, Sienna Sunburst',uom:'Unidad',org:'SPP04',sub:'CAS',oracle:1,counts:[]},
+    {sku:'0140540525',name:'Player II Stratocaster, Aquatone Blue',uom:'Unidad',org:'SPP04',sub:'EVE',oracle:1,counts:[]},
+    {sku:'0147452360',name:'Player II Modified, Olympic White',uom:'Unidad',org:'SPP04',sub:'SUB',oracle:1,counts:[]},
+    {sku:'0149062300',name:"Vintera II '60s Telecaster, Fiesta Red",uom:'Unidad',org:'SPP04',sub:'NOG',oracle:1,counts:[]},
+    {sku:'0198640384',name:'American Profes Stratocaster HSS, Mystic Surf Green',uom:'Unidad',org:'SPP04',sub:'CAS',oracle:1,counts:[]},
+    {sku:'0300040256',name:'Pcs Zoom Motor Unit',uom:'Unidad',org:'SPP01',sub:'SUB',oracle:10,counts:[]},
+    {sku:'081407540023',name:'EBV 2026 Paquete especial, edición limitada',uom:'Unidad',org:'SPP01',sub:'EVE',oracle:100,counts:[]},
+    {sku:'0970253321',name:'CC-140SCE Concord Guitar, Natural',uom:'Unidad',org:'SPP04',sub:'NOG',oracle:2,counts:[]},
+    {sku:'0970722503',name:'Malibu Player Sunburst, edición especial',uom:'Unidad',org:'SPP04',sub:'CAS',oracle:1,counts:[]},
+  ];
+  setStatus('ok',`✓ ${products.length} productos demo cargados`);
+  pushProducts();
+  toast(`✓ ${products.length} productos enviados al equipo`);
+}
+
+// ═══════════════════════════════════
+// ESCÁNER
+// ═══════════════════════════════════
+async function toggleCamera(){
+  const video=document.getElementById('scanner-video');
+  if(cameraStream){
+    cameraStream.getTracks().forEach(t=>t.stop());
+    cameraStream=null; video.style.display='none';
+    return;
+  }
+  try{
+    cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+    video.srcObject=cameraStream; video.style.display='block';
+    toast('Cámara activada — apunta al código de barras');
+    // Simulación: en producción integrarías ZXing o QuaggaJS aquí
+  }catch(e){ toast('No se pudo acceder a la cámara'); }
+}
+
+function scanSKU(rawValue){
+  const sku=rawValue.trim();
+  if(!sku) return;
+  if(products.length===0){ toast('Carga datos primero (Tab ②)'); return; }
+  const idx=products.findIndex(p=>p.sku===sku||p.sku.endsWith(sku)||sku.endsWith(p.sku));
+  if(idx===-1){
+    document.getElementById('scan-result').innerHTML=`<span style="color:var(--danger)">✗ SKU no encontrado: ${sku}</span>`;
+    document.getElementById('quick-count-wrap').style.display='none';
+    return;
+  }
+  showQuickCount(idx);
+  // Agregar a recientes
+  recentScans.unshift({sku:products[idx].sku, name:products[idx].name, ts:Date.now()});
+  recentScans=recentScans.slice(0,5);
+  renderRecent();
+}
+
+function showQuickCount(idx){
+  const p=products[idx];
+  currentQcIdx=idx;
+  document.getElementById('qc-name').textContent=p.name;
+  document.getElementById('qc-sku').textContent=p.sku + (p.sub ? '  ·  SUBINV: '+p.sub : '');
+  document.getElementById('qc-oracle').textContent=p.oracle;
+  document.getElementById('scan-result').innerHTML=`<span style="color:var(--accent)">✓ ${p.sku} — ${p.name.substring(0,50)}${p.name.length>50?'...':''}</span>`;
+  updateQcStats(idx);
+  renderExisting(idx);
+  document.getElementById('quick-count-wrap').style.display='block';
+  document.getElementById('qc-qty').value='';
+  document.getElementById('qc-qty').focus();
+}
+
+function updateQcStats(idx){
+  const p=products[idx];
+  const total=p.counts.reduce((s,c)=>s+c.qty,0);
+  const remaining=p.oracle-total;
+  document.getElementById('qc-counted').textContent=total;
+  const remEl=document.getElementById('qc-remaining');
+  remEl.textContent=remaining===0?'✓ Completo':remaining>0?remaining:'⚠ '+Math.abs(remaining)+' de más';
+  remEl.style.color=remaining===0?'var(--accent)':remaining>0?'var(--warn)':'var(--danger)';
+}
+
+function renderExisting(idx){
+  const p=products[idx];
+  const total=p.counts.reduce((s,c)=>s+c.qty,0);
+  const el=document.getElementById('qc-existing');
+  if(!p.counts.length){
+    el.innerHTML='<span style="color:var(--muted)">Ningún conteo aún.</span>';
+    return;
+  }
+  el.innerHTML=p.counts.map((c,ci)=>
+    `<div class="loc-entry" style="margin-bottom:4px;justify-content:space-between;">
+      <div style="display:flex;align-items:center;gap:6px;flex:1;">
+        <span class="loc-dot" style="background:${c.color}"></span>
+        <span style="color:${c.color}">${c.who}</span>
+        <span style="color:var(--muted)">·</span>
+        <span>${c.loc||'Sin ubicación'}</span>
+        <span style="color:var(--muted)">·</span>
+        <span id="cnt-val-${ci}" style="color:var(--text);font-weight:500;">${c.qty}</span>
+      </div>
+      <div style="display:flex;gap:4px;">
+        <button onclick="editCount(${idx},${ci})" style="padding:1px 7px;font-size:10px;font-family:var(--mono);background:rgba(245,166,35,.1);border:1px solid rgba(245,166,35,.3);color:var(--warn);border-radius:3px;cursor:pointer;">✏</button>
+        <button onclick="deleteCount(${idx},${ci})" style="padding:1px 7px;font-size:10px;font-family:var(--mono);background:rgba(255,71,87,.1);border:1px solid rgba(255,71,87,.3);color:var(--danger);border-radius:3px;cursor:pointer;">✕</button>
+      </div>
+    </div>`
+  ).join('')+`<div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border);font-family:var(--mono);font-size:11px;">
+    Total actual: <span style="color:var(--accent);font-weight:500;">${total}</span>
+    &nbsp;/&nbsp; Oracle: <span style="color:var(--text);">${p.oracle}</span>
+    &nbsp;&nbsp; <span style="color:${total===p.oracle?'var(--accent)':total<p.oracle?'var(--warn)':'var(--danger)'}">
+      ${total===p.oracle?'✓ Completo':total<p.oracle?'Falta '+(p.oracle-total):'⚠ '+(total-p.oracle)+' de más'}
+    </span>
+  </div>`;
+  updateQcStats(idx);
+}
+
+function editCount(idx,ci){
+  const p=products[idx];
+  const c=p.counts[ci];
+  const newQty=prompt(`Editar cantidad para "${c.loc}" (${c.who})\nValor actual: ${c.qty}`, c.qty);
+  if(newQty===null) return;
+  const parsed=parseFloat(newQty);
+  if(isNaN(parsed)||parsed<0){ toast('Cantidad inválida'); return; }
+  c.qty=parsed;
+  renderExisting(idx);
+  pushProducts();
+  toast(`Conteo editado: ${parsed} en ${c.loc}`);
+}
+
+function deleteCount(idx,ci){
+  const p=products[idx];
+  const c=p.counts[ci];
+  if(!confirm(`¿Eliminar conteo de ${c.qty} en "${c.loc}" (${c.who})?`)) return;
+  p.counts.splice(ci,1);
+  renderExisting(idx);
+  updateQcStats(idx);
+  pushProducts();
+  toast('Conteo eliminado');
+}
+
+function addLocationCount(){
+  if(currentQcIdx===null) return;
+  const loc=document.getElementById('qc-location').value.trim()||'Sin ubicación';
+  const qty=parseFloat(document.getElementById('qc-qty').value);
+  if(isNaN(qty)||qty<0){ toast('Ingresa una cantidad válida'); return; }
+  const p=products[currentQcIdx];
+  p.counts.push({loc, qty, who:myName, color:myColor, ts:Date.now()});
+  renderExisting(currentQcIdx);
+  // ── Contador vuelve a 0 inmediatamente ──
+  document.getElementById('qc-qty').value='';
+  document.getElementById('qc-qty').focus();
+  pushProducts();
+  toast(`+${qty} en ${loc} — SKU ${p.sku}`);
+}
+
+function clearQuick(){
+  currentQcIdx=null;
+  document.getElementById('quick-count-wrap').style.display='none';
+  document.getElementById('scan-result').textContent='Esperando escaneo...';
+  document.getElementById('sku-scan-input').focus();
+}
+
+function renderRecent(){
+  const el=document.getElementById('recent-scans');
+  if(!recentScans.length){ el.textContent='Aún no hay escaneos.'; return; }
+  el.innerHTML=recentScans.map(r=>{
+    const p=products.find(x=>x.sku===r.sku);
+    const total=p?p.counts.reduce((s,c)=>s+c.qty,0):'?';
+    return `<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);">
+      <span style="color:var(--accent)">${r.sku}</span>
+      <span style="color:var(--muted)">${r.name.substring(0,35)}${r.name.length>35?'...':''}</span>
+      <span style="color:var(--text)">Total: ${total}</span>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════
+// TABLA COMPLETA
+// ═══════════════════════════════════
+function totalOf(p){ return p.counts.reduce((s,c)=>s+c.qty,0); }
+
+function renderTable(){
+  const q=(document.getElementById('search-input')?.value||'').toLowerCase();
+  const f=document.getElementById('filter-sel')?.value||'all';
+  let rows=products.filter(p=>p.sku.toLowerCase().includes(q)||p.name.toLowerCase().includes(q));
+  if(f==='pending')  rows=rows.filter(p=>p.counts.length===0);
+  if(f==='counted')  rows=rows.filter(p=>p.counts.length>0);
+  if(f==='diff')     rows=rows.filter(p=>p.counts.length>0&&totalOf(p)!==p.oracle);
+  document.getElementById('table-count').textContent=`${rows.length} ítems`;
+  const counted=products.filter(p=>p.counts.length>0).length;
+  const pct=products.length?Math.round(counted/products.length*100):0;
+  document.getElementById('prog-bar').style.width=pct+'%';
+  document.getElementById('prog-label').textContent=`${counted} / ${products.length} contados (${pct}%)`;
+  document.getElementById('table-body').innerHTML=rows.map(p=>{
+    const total=totalOf(p);
+    const diff=p.counts.length>0?total-p.oracle:null;
+    const diffHtml=diff===null?'<span style="color:var(--muted)">—</span>'
+      :diff>0?`<span class="dp">+${diff}</span>`
+      :diff<0?`<span class="dm">${diff}</span>`
+      :'<span style="color:var(--muted)">0</span>';
+    const badge=p.counts.length===0?'<span class="badge b-pend">Pendiente</span>'
+      :diff===0?'<span class="badge b-ok">✓ OK</span>'
+      :Math.abs(diff||0)<=2?'<span class="badge b-warn">Dif. leve</span>'
+      :'<span class="badge b-err">Dif. alta</span>';
+    const locsHtml=p.counts.length===0
+      ?'<span style="color:var(--muted);font-size:11px;font-family:var(--mono)">—</span>'
+      :`<div class="loc-entries">${p.counts.map(c=>
+        `<div class="loc-entry"><span class="loc-dot" style="background:${c.color}"></span><span style="color:${c.color}">${c.who}</span><span style="color:var(--muted)">·${c.loc||'?'}</span><strong style="color:var(--text)">·${c.qty}</strong></div>`
+      ).join('')}</div>`;
+    return `<tr>
+      <td class="sku-cell">${p.sku}</td>
+      <td class="name-cell">${p.name}</td>
+      <td style="font-family:var(--mono);font-size:11px;color:var(--muted)">${p.org}</td>
+      <td style="font-family:var(--mono);font-size:11px;color:var(--warn)">${p.sub||'—'}</td>
+      <td class="oracle-cell">${p.oracle}</td>
+      <td class="total-cell" style="color:${p.counts.length?'var(--text)':'var(--muted)'}">${p.counts.length?total:'—'}</td>
+      <td class="diff-cell">${diffHtml}</td>
+      <td>${locsHtml}</td>
+      <td>${badge}</td>
+    </tr>`;
+  }).join('');
+  renderMetrics('metrics-box');
+}
+
+function renderMetrics(id){
+  const el=document.getElementById(id);if(!el)return;
+  const counted=products.filter(p=>p.counts.length>0).length;
+  const diffs=products.filter(p=>p.counts.length>0&&totalOf(p)!==p.oracle).length;
+  const high=products.filter(p=>p.counts.length>0&&Math.abs(totalOf(p)-p.oracle)>2).length;
+  el.innerHTML=`
+    <div class="metric"><div class="mlabel">Total</div><div class="mval">${products.length}</div></div>
+    <div class="metric"><div class="mlabel">Contados</div><div class="mval g">${counted}</div></div>
+    <div class="metric"><div class="mlabel">Con diferencia</div><div class="mval a">${diffs}</div></div>
+    <div class="metric"><div class="mlabel">Discrepancia alta</div><div class="mval r">${high}</div></div>`;
+}
+
+// ═══════════════════════════════════
+// EXPORTAR
+// ═══════════════════════════════════
+function today(){return new Date().toISOString().split('T')[0];}
+
+function renderPreview(){
+  renderMetrics('metrics-export');
+  document.getElementById('preview-body').innerHTML=
+    products.filter(p=>p.counts.length>0).slice(0,20).map(p=>{
+      const total=totalOf(p);
+      return `<tr>
+        <td style="color:var(--accent);font-family:var(--mono)">${p.sku}</td>
+        <td style="font-family:var(--mono);color:var(--muted)">${p.org}</td>
+        <td style="font-family:var(--mono);color:var(--warn)">${p.sub||'—'}</td>
+        <td style="font-family:var(--mono)">MISC_RECEIPT</td>
+        <td style="font-family:var(--mono);color:${total>=p.oracle?'var(--accent)':'var(--danger)'}">${total}</td>
+        <td style="font-family:var(--mono);color:var(--muted)">${p.uom}</td>
+        <td style="font-family:var(--mono);color:var(--muted)">${today()}</td>
+      </tr>`;
+    }).join('');
+}
+
+function dl(content,name){
+  const b=new Blob(['\uFEFF'+content],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name;a.click();
+}
+function exportFBDI(){
+  const hdr='ITEM_NUMBER,ORGANIZATION_CODE,SUBINVENTORY,TRANSACTION_TYPE_NAME,PRIMARY_QUANTITY,TRANSACTION_UOM,TRANSACTION_DATE';
+  const rows=products.filter(p=>p.counts.length>0)
+    .map(p=>`${p.sku},${p.org},${p.sub||''},MISC_RECEIPT,${totalOf(p)},${p.uom},${today()}`);
+  dl([hdr,...rows].join('\n'),`oracle_fbdi_${sessionId}_${today()}.csv`);
+}
+function exportShopify(){
+  const hdr='SKU,Title,Inventory Quantity,Location';
+  const rows=products.filter(p=>p.counts.length>0)
+    .map(p=>`${p.sku},"${p.name.replace(/"/g,'""')}",${totalOf(p)},Main Warehouse`);
+  dl([hdr,...rows].join('\n'),`shopify_${sessionId}_${today()}.csv`);
+}
+function exportDiff(){
+  const hdr='SKU,Nombre,Org,Subinventario,UOM,Stock_Oracle,Total_Contado,Diferencia,Acción,Detalle_Ubicaciones';
+  const rows=products.filter(p=>p.counts.length>0&&totalOf(p)!==p.oracle).map(p=>{
+    const total=totalOf(p);
+    const diff=total-p.oracle;
+    const detail=p.counts.map(c=>`${c.who}@${c.loc||'?'}:${c.qty}`).join(' | ');
+    return `${p.sku},"${p.name.replace(/"/g,'""')}",${p.org},${p.sub||''},${p.uom},${p.oracle},${total},${diff>0?'+':''}${diff},${diff>0?'RECEIPT':'ISSUE'},"${detail}"`;
+  });
+  dl([hdr,...rows].join('\n'),`diferencias_${sessionId}_${today()}.csv`);
+}
+
+function copyCode(){
+  if(!sessionId){toast('Sin sesión activa');return;}
+  navigator.clipboard?.writeText(sessionId).then(()=>toast(`Código copiado: ${sessionId}`));
+}
+function toast(msg){
+  const t=document.getElementById('toast');t.textContent=msg;t.style.display='block';
+  clearTimeout(window._toastTimer);
+  window._toastTimer=setTimeout(()=>t.style.display='none',2800);
+}
+</script>
+</body>
+</html>
